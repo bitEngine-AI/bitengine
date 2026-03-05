@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>个人记账本</h1>
+
+<div class="summary" id="summary">
+    <div class="summary-card income">
+        <span class="label">总收入</span>
+        <span class="value" id="totalIncome">0.00</span>
+    </div>
+    <div class="summary-card expense">
+        <span class="label">总支出</span>
+        <span class="value" id="totalExpense">0.00</span>
+    </div>
+    <div class="summary-card balance">
+        <span class="label">结余</span>
+        <span class="value" id="totalBalance">0.00</span>
+    </div>
+</div>
+
+<div class="filters">
+    <input type="date" id="dateFrom" />
+    <span>至</span>
+    <input type="date" id="dateTo" />
+    <select id="filterCategory">
+        <option value="">全部分类</option>
+        {% for key, label in category_labels.items() %}
+        <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button onclick="applyFilter()">筛选</button>
+</div>
+
+<div class="add-form">
+    <h3>记一笔</h3>
+    <div class="form-row">
+        <input type="date" id="txDate" />
+        <input type="number" id="txAmount" placeholder="金额" step="0.01" min="0" />
+        <select id="txCategory">
+            <optgroup label="收入">
+                {% for cat in income_categories %}
+                <option value="{{ cat }}">{{ category_labels[cat] }}</option>
+                {% endfor %}
+            </optgroup>
+            <optgroup label="支出">
+                {% for cat in expense_categories %}
+                <option value="{{ cat }}">{{ category_labels[cat] }}</option>
+                {% endfor %}
+            </optgroup>
+        </select>
+        <input type="text" id="txNote" placeholder="备注" />
+        <button onclick="addTransaction()">添加</button>
+    </div>
+</div>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>日期</th>
+            <th>类型</th>
+            <th>分类</th>
+            <th>金额</th>
+            <th>备注</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody id="txBody"></tbody>
+</table>
+{% endblock %}

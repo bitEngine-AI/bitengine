@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>表单构建器</h1>
+
+<div class="toolbar">
+    <button onclick="showCreateForm()">新建表单</button>
+</div>
+
+<div class="form-list" id="formList"></div>
+
+<!-- Create/Edit Form Modal -->
+<div class="modal" id="editorModal" style="display:none;">
+    <div class="modal-content modal-wide">
+        <h2 id="editorTitle">新建表单</h2>
+        <input type="hidden" id="editFormId" value="" />
+        <div class="form-group">
+            <label>表单标题 *</label>
+            <input type="text" id="formTitleInput" />
+        </div>
+        <div class="form-group">
+            <label>描述</label>
+            <input type="text" id="formDescInput" />
+        </div>
+        <h3>字段列表</h3>
+        <div id="fieldsContainer"></div>
+        <div class="add-field-bar">
+            <select id="newFieldType">
+                <option value="text">文本框</option>
+                <option value="textarea">多行文本</option>
+                <option value="number">数字</option>
+                <option value="select">下拉选择</option>
+                <option value="checkbox">复选框</option>
+            </select>
+            <button onclick="addField()">添加字段</button>
+        </div>
+        <div class="form-actions">
+            <button onclick="saveForm()">保存</button>
+            <button class="btn-cancel" onclick="hideEditor()">取消</button>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal" id="previewModal" style="display:none;">
+    <div class="modal-content">
+        <h2 id="previewTitle">表单预览</h2>
+        <form id="previewForm"></form>
+        <div class="form-actions">
+            <button onclick="submitPreview()">提交</button>
+            <button class="btn-cancel" onclick="hidePreview()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- Submissions Modal -->
+<div class="modal" id="subsModal" style="display:none;">
+    <div class="modal-content modal-wide">
+        <h2>提交记录</h2>
+        <div id="subsList"></div>
+        <div class="form-actions">
+            <button class="btn-cancel" onclick="hideSubs()">关闭</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

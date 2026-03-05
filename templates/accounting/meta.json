@@ -1,0 +1,6 @@
+{
+  "slug": "accounting",
+  "name": "个人记账本",
+  "description": "个人收支记录与统计，支持分类筛选和日期范围查询",
+  "category": "finance"
+}

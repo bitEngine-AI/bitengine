@@ -101,8 +101,9 @@ func main() {
 		db,
 	)
 	svc := apps.NewAppService(db, containerMgr)
+	tplSvc := apps.NewTemplateService("templates", builder, containerMgr, caddyMgr, db)
 
-	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama, codegen, gen, svc)
+	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama, codegen, gen, svc, tplSvc)
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,

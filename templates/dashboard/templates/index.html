@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>数据看板</h1>
+
+<div class="kpi-cards" id="kpiCards">
+    <div class="kpi-card">
+        <span class="kpi-label">总销售额</span>
+        <span class="kpi-value" id="kpiSales">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">总访客数</span>
+        <span class="kpi-value" id="kpiVisitors">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">总订单数</span>
+        <span class="kpi-value" id="kpiOrders">--</span>
+    </div>
+    <div class="kpi-card">
+        <span class="kpi-label">平均转化率</span>
+        <span class="kpi-value" id="kpiConversion">--</span>
+    </div>
+</div>
+
+<div class="chart-section">
+    <h2>近30天销售趋势</h2>
+    <div class="bar-chart" id="barChart"></div>
+</div>
+
+<div class="table-section">
+    <h2>每日明细</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>日期</th>
+                <th>销售额</th>
+                <th>访客数</th>
+                <th>订单数</th>
+                <th>转化率</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+{% endblock %}

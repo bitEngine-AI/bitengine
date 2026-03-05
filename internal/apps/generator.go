@@ -161,15 +161,16 @@ func (g *AppGenerator) GenerateApp(ctx context.Context, req GenerateRequest, emi
 	// ── Step 6: Caddy Route ────────────────────────────────────────────
 	emit(SSEEvent{Event: "step", Data: StepData{Step: 6, Name: "route", Status: "running"}})
 
-	if err := g.Caddy.AddRoute(ctx, slug, port); err != nil {
-		emitError(emit, fmt.Sprintf("caddy route failed: %v", err))
-		return nil, fmt.Errorf("generator: %w", err)
-	}
-
 	domain := fmt.Sprintf("app-%s.%s", slug, g.Caddy.BaseDomain)
-	appURL := fmt.Sprintf("http://%s", domain)
-	slog.Info("route added", "app_id", appID, "domain", domain)
-	emit(SSEEvent{Event: "step", Data: StepData{Step: 6, Name: "route", Status: "done", Result: map[string]string{"domain": domain}}})
+	appURL := fmt.Sprintf("http://localhost:%d", port)
+	if err := g.Caddy.AddRoute(ctx, slug, port); err != nil {
+		slog.Warn("caddy route failed (app still accessible via port)", "app_id", appID, "error", err)
+		emit(SSEEvent{Event: "step", Data: StepData{Step: 6, Name: "route", Status: "warning", Result: map[string]string{"reason": err.Error()}}})
+	} else {
+		appURL = fmt.Sprintf("http://%s", domain)
+		slog.Info("route added", "app_id", appID, "domain", domain)
+		emit(SSEEvent{Event: "step", Data: StepData{Step: 6, Name: "route", Status: "done", Result: map[string]string{"domain": domain}}})
+	}
 
 	// ── Persist to database ────────────────────────────────────────────
 	sourceJSON, err := json.Marshal(code.Files)

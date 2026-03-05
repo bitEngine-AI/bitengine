@@ -6,6 +6,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/bitEngine-AI/bitengine/internal/monitor"
 )
 
 const Version = "0.1.0-mvp"
@@ -40,4 +42,18 @@ func (h *SystemHandler) Status(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+func (h *SystemHandler) Metrics(w http.ResponseWriter, r *http.Request) {
+	metrics, err := monitor.Collect(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": map[string]any{
+				"code":    "METRICS_ERROR",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, metrics)
 }

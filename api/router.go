@@ -13,7 +13,7 @@ import (
 	"github.com/bitEngine-AI/bitengine/internal/setup"
 )
 
-func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.OllamaClient, codegen *ai.CodeGenerator, gen *apps.AppGenerator, svc *apps.AppService) chi.Router {
+func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.OllamaClient, codegen *ai.CodeGenerator, gen *apps.AppGenerator, svc *apps.AppService, tplSvc *apps.TemplateService) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -39,6 +39,7 @@ func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.Olla
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public endpoints
 		r.Get("/system/status", sys.Status)
+		r.Get("/system/metrics", sys.Metrics)
 		r.Get("/setup/status", setupH.Status)
 		r.Post("/setup/step/1", setupH.Step1)
 		r.Post("/auth/login", authH.Login)
@@ -51,7 +52,7 @@ func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.Olla
 			r.Post("/ai/intent", aiH.AnalyzeIntent)
 			r.Post("/ai/generate", aiH.GenerateCode)
 
-			appsH := AppsHandler{Generator: gen, Service: svc}
+			appsH := AppsHandler{Generator: gen, Service: svc, Templates: tplSvc}
 			r.Post("/apps", appsH.Create)
 			r.Get("/apps", appsH.List)
 			r.Get("/apps/{id}", appsH.Get)
@@ -59,6 +60,8 @@ func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.Olla
 			r.Post("/apps/{id}/start", appsH.Start)
 			r.Post("/apps/{id}/stop", appsH.Stop)
 			r.Get("/apps/{id}/logs", appsH.Logs)
+			r.Get("/apps/templates", appsH.ListTemplates)
+			r.Post("/apps/templates/{slug}/deploy", appsH.DeployTemplate)
 		})
 	})
 

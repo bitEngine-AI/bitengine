@@ -1,0 +1,6 @@
+{
+  "slug": "todo",
+  "name": "待办事项",
+  "description": "任务看板，支持拖拽排序和状态切换",
+  "category": "productivity"
+}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>待办事项看板</h1>
+
+<div class="add-task">
+    <input type="text" id="taskTitle" placeholder="输入新任务..." />
+    <select id="taskPriority">
+        <option value="low">低优先级</option>
+        <option value="medium" selected>中优先级</option>
+        <option value="high">高优先级</option>
+    </select>
+    <button onclick="addTask()">添加</button>
+</div>
+
+<div class="board">
+    <div class="column" data-status="todo" ondrop="onDrop(event)" ondragover="onDragOver(event)">
+        <h2>待办</h2>
+        <div class="task-list" id="col-todo"></div>
+    </div>
+    <div class="column" data-status="in_progress" ondrop="onDrop(event)" ondragover="onDragOver(event)">
+        <h2>进行中</h2>
+        <div class="task-list" id="col-in_progress"></div>
+    </div>
+    <div class="column" data-status="done" ondrop="onDrop(event)" ondragover="onDragOver(event)">
+        <h2>已完成</h2>
+        <div class="task-list" id="col-done"></div>
+    </div>
+</div>
+{% endblock %}

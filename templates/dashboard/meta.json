@@ -1,0 +1,6 @@
+{
+  "slug": "dashboard",
+  "name": "数据看板",
+  "description": "数据可视化看板，展示关键业务指标和趋势图表",
+  "category": "analytics"
+}

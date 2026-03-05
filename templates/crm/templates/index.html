@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>简易客户管理</h1>
+
+<div class="toolbar">
+    <input type="text" id="searchInput" placeholder="搜索姓名或公司..." oninput="loadContacts()" />
+    <select id="statusFilter" onchange="loadContacts()">
+        <option value="">全部状态</option>
+        <option value="lead">潜在客户</option>
+        <option value="customer">正式客户</option>
+        <option value="churned">已流失</option>
+    </select>
+    <button onclick="showForm()">新建客户</button>
+</div>
+
+<div class="modal" id="contactModal" style="display:none;">
+    <div class="modal-content">
+        <h2 id="formTitle">新建客户</h2>
+        <input type="hidden" id="editId" value="" />
+        <div class="form-group">
+            <label>姓名 *</label>
+            <input type="text" id="fName" />
+        </div>
+        <div class="form-group">
+            <label>邮箱</label>
+            <input type="email" id="fEmail" />
+        </div>
+        <div class="form-group">
+            <label>电话</label>
+            <input type="text" id="fPhone" />
+        </div>
+        <div class="form-group">
+            <label>公司</label>
+            <input type="text" id="fCompany" />
+        </div>
+        <div class="form-group">
+            <label>状态</label>
+            <select id="fStatus">
+                <option value="lead">潜在客户</option>
+                <option value="customer">正式客户</option>
+                <option value="churned">已流失</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>备注</label>
+            <textarea id="fNotes" rows="3"></textarea>
+        </div>
+        <div class="form-actions">
+            <button onclick="saveContact()">保存</button>
+            <button class="btn-cancel" onclick="hideForm()">取消</button>
+        </div>
+    </div>
+</div>
+
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>姓名</th>
+            <th>邮箱</th>
+            <th>电话</th>
+            <th>公司</th>
+            <th>状态</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody id="contactsBody"></tbody>
+</table>
+{% endblock %}

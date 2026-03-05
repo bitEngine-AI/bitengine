@@ -15,6 +15,7 @@ import (
 type AppsHandler struct {
 	Generator *apps.AppGenerator
 	Service   *apps.AppService
+	Templates *apps.TemplateService
 }
 
 type createAppRequest struct {
@@ -133,4 +134,26 @@ func (h *AppsHandler) Logs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	io.Copy(w, reader)
+}
+
+// ListTemplates handles GET /api/v1/apps/templates — list built-in templates.
+func (h *AppsHandler) ListTemplates(w http.ResponseWriter, r *http.Request) {
+	templates, err := h.Templates.ListTemplates()
+	if err != nil {
+		writeError(w, "INTERNAL", "failed to list templates: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, templates)
+}
+
+// DeployTemplate handles POST /api/v1/apps/templates/{slug}/deploy — deploy a template.
+func (h *AppsHandler) DeployTemplate(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+
+	result, err := h.Templates.DeployTemplate(r.Context(), slug)
+	if err != nil {
+		writeError(w, "DEPLOY_ERROR", "failed to deploy template: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }

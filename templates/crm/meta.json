@@ -1,0 +1,6 @@
+{
+  "slug": "crm",
+  "name": "简易客户管理",
+  "description": "客户信息管理系统，支持客户状态跟踪和搜索",
+  "category": "business"
+}
