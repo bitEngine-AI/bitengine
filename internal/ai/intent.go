@@ -26,39 +26,18 @@ type IntentRequirements struct {
 	UIStyle   string   `json:"ui_style"`
 }
 
-// intentSchema is the JSON schema passed to Ollama's format parameter
-// to constrain the model output.
-var intentSchema = json.RawMessage(`{
-	"type": "object",
-	"properties": {
-		"intent":      {"type": "string", "enum": ["create_app", "modify_app", "question"]},
-		"app_name":    {"type": "string"},
-		"description": {"type": "string"},
-		"requirements": {
-			"type": "object",
-			"properties": {
-				"features":   {"type": "array", "items": {"type": "string"}},
-				"data_model": {"type": "string"},
-				"ui_style":   {"type": "string"}
-			},
-			"required": ["features", "data_model", "ui_style"]
-		},
-		"confidence": {"type": "number"}
-	},
-	"required": ["intent", "app_name", "description", "requirements", "confidence"]
-}`)
 
-const systemPrompt = `You are an intent analysis engine for BitEngine, an AI-powered web application generator.
-Analyze the user's input and extract their intent as structured JSON.
+const systemPrompt = `/no_think
+You are an intent analysis engine. Output ONLY valid JSON, no other text.
+
+Required JSON format:
+{"intent":"create_app","app_name":"kebab-case-name","description":"one line description","requirements":{"features":["feature1","feature2","feature3"],"data_model":"entities description","ui_style":"layout style"},"confidence":0.9}
 
 Rules:
-- intent: "create_app" for new app requests, "modify_app" for changes, "question" for questions
-- app_name: short kebab-case name derived from the description (e.g. "project-board", "todo-list")
-- description: concise one-line description of the app in the same language as input
-- requirements.features: list of key features (3-6 items)
-- requirements.data_model: describe the core data entities and their fields
-- requirements.ui_style: describe the UI layout style (e.g. "kanban board", "table list", "dashboard")
-- confidence: 0.0-1.0 how confident you are in the analysis`
+- intent: "create_app", "modify_app", or "question"
+- app_name: short kebab-case (e.g. "project-board")
+- features: 3-5 items
+- Output raw JSON only, no markdown fences`
 
 // IntentEngine analyzes user prompts to extract structured intent.
 type IntentEngine struct {
@@ -85,17 +64,30 @@ func (e *IntentEngine) Analyze(ctx context.Context, input string) (*IntentResult
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: input},
 		},
-		Format: intentSchema,
 		Options: map[string]any{
 			"temperature": 0.3,
+			"num_predict": 2048,
 		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("intent: %w", err)
 	}
 
+	content := resp.Message.Content
+	// Fallback: if content is empty but thinking has content, use thinking
+	if strings.TrimSpace(content) == "" && resp.Message.Thinking != "" {
+		content = resp.Message.Thinking
+	}
+	// Extract JSON from response (model may wrap in markdown fences or extra text)
+	if idx := strings.Index(content, "{"); idx >= 0 {
+		if end := strings.LastIndex(content, "}"); end > idx {
+			content = content[idx : end+1]
+		}
+	}
+
 	var result IntentResult
-	if err := json.Unmarshal([]byte(resp.Message.Content), &result); err != nil {
+	if err := json.Unmarshal([]byte(content), &result); err != nil {
+		slog.Warn("intent: raw model output", "content", resp.Message.Content, "thinking", resp.Message.Thinking[:min(len(resp.Message.Thinking), 300)])
 		return nil, fmt.Errorf("intent: failed to parse model output: %w", err)
 	}
 

@@ -13,8 +13,9 @@ import (
 const Version = "0.1.0-mvp"
 
 type SystemHandler struct {
-	DB  *sqlx.DB
-	RDB *redis.Client
+	DB          *sqlx.DB
+	RDB         *redis.Client
+	CodegenMode string
 }
 
 func (h *SystemHandler) Status(w http.ResponseWriter, r *http.Request) {
@@ -34,10 +35,11 @@ func (h *SystemHandler) Status(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := map[string]string{
-		"status":  status,
-		"version": Version,
-		"db":      dbStatus,
-		"redis":   redisStatus,
+		"status":       status,
+		"version":      Version,
+		"db":           dbStatus,
+		"redis":        redisStatus,
+		"codegen_mode": h.CodegenMode,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -21,15 +21,16 @@ func NewOllamaClient(baseURL string) *OllamaClient {
 	return &OllamaClient{
 		BaseURL: baseURL,
 		HTTPClient: &http.Client{
-			Timeout: 120 * time.Second,
+			Timeout: 10 * time.Minute,
 		},
 	}
 }
 
 // ChatMessage represents a single message in a chat conversation.
 type ChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role     string `json:"role"`
+	Content  string `json:"content"`
+	Thinking string `json:"thinking,omitempty"`
 }
 
 // ChatRequest is the request body for /api/chat.

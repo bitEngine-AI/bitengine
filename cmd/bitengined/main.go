@@ -69,12 +69,8 @@ func main() {
 		slog.Warn("ollama not available, AI features will be limited", "url", cfg.OllamaURL)
 	}
 
-	codegen := ai.NewCodeGenerator(cfg.AnthropicKey, cfg.DeepSeekKey)
-	if codegen.IsAvailable() {
-		slog.Info("code generator ready")
-	} else {
-		slog.Warn("no cloud API key configured, code generation disabled")
-	}
+	codegen := ai.NewCodeGen(cfg.AnthropicKey, cfg.DeepSeekKey, ollama)
+	slog.Info("code generator ready", "mode", codegen.Mode())
 
 	containerMgr, err := runtime.NewContainerManager()
 	if err != nil {
@@ -106,10 +102,10 @@ func main() {
 	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama, codegen, gen, svc, tplSvc)
 
 	srv := &http.Server{
-		Addr:         cfg.ListenAddr,
-		Handler:      router,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		Addr:        cfg.ListenAddr,
+		Handler:     router,
+		ReadTimeout: 15 * time.Second,
+		// WriteTimeout disabled: SSE streams (app generation) can run for minutes
 	}
 
 	go func() {

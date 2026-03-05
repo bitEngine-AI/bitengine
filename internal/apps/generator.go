@@ -45,7 +45,7 @@ type GenerateResult struct {
 // AppGenerator orchestrates intent -> codegen -> review -> build -> deploy.
 type AppGenerator struct {
 	Intent    *ai.IntentEngine
-	CodeGen   *ai.CodeGenerator
+	CodeGen   ai.CodeGen
 	Reviewer  *ai.CodeReviewer
 	Builder   *runtime.ImageBuilder
 	Container *runtime.ContainerManager
@@ -56,7 +56,7 @@ type AppGenerator struct {
 // NewAppGenerator creates a new AppGenerator with all required dependencies.
 func NewAppGenerator(
 	intent *ai.IntentEngine,
-	codeGen *ai.CodeGenerator,
+	codeGen ai.CodeGen,
 	reviewer *ai.CodeReviewer,
 	builder *runtime.ImageBuilder,
 	container *runtime.ContainerManager,
@@ -122,6 +122,11 @@ func (g *AppGenerator) GenerateApp(ctx context.Context, req GenerateRequest, emi
 	}
 
 	// ── Step 4: Docker Image Build ─────────────────────────────────────
+	if g.Builder == nil || g.Container == nil {
+		emitError(emit, "docker not available, cannot build and deploy apps")
+		return nil, fmt.Errorf("generator: docker not available")
+	}
+
 	emit(SSEEvent{Event: "step", Data: StepData{Step: 4, Name: "build", Status: "running"}})
 
 	imageTag, err := g.Builder.Build(ctx, slug, code)

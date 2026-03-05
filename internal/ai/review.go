@@ -17,16 +17,6 @@ type ReviewResult struct {
 	Issues []string `json:"issues"`
 }
 
-var reviewSchema = json.RawMessage(`{
-	"type": "object",
-	"properties": {
-		"passed": {"type": "boolean"},
-		"score":  {"type": "integer"},
-		"issues": {"type": "array", "items": {"type": "string"}}
-	},
-	"required": ["passed", "score", "issues"]
-}`)
-
 const reviewSystemPrompt = `You are a security-focused code reviewer. Review the provided Flask application code for:
 
 1. Hardcoded secrets or API keys
@@ -64,17 +54,28 @@ func (r *CodeReviewer) Review(ctx context.Context, code *GeneratedCode) (*Review
 			{Role: "system", Content: reviewSystemPrompt},
 			{Role: "user", Content: prompt},
 		},
-		Format: reviewSchema,
 		Options: map[string]any{
 			"temperature": 0.1,
+			"num_predict": 1024,
 		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("review: %w", err)
 	}
 
+	content := resp.Message.Content
+	if strings.TrimSpace(content) == "" && resp.Message.Thinking != "" {
+		content = resp.Message.Thinking
+	}
+	if idx := strings.Index(content, "{"); idx >= 0 {
+		if end := strings.LastIndex(content, "}"); end > idx {
+			content = content[idx : end+1]
+		}
+	}
+
 	var result ReviewResult
-	if err := json.Unmarshal([]byte(resp.Message.Content), &result); err != nil {
+	if err := json.Unmarshal([]byte(content), &result); err != nil {
+		slog.Warn("review: raw model output", "content", resp.Message.Content[:min(len(resp.Message.Content), 500)])
 		return nil, fmt.Errorf("review: failed to parse model output: %w", err)
 	}
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -51,6 +52,15 @@ func (h *AppsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.Event, string(data))
 		flusher.Flush()
 	}
+
+	defer func() {
+		if rec := recover(); rec != nil {
+			slog.Error("panic in app generation", "recover", rec)
+			data, _ := json.Marshal(map[string]string{"message": fmt.Sprintf("internal error: %v", rec)})
+			fmt.Fprintf(w, "event: error\ndata: %s\n\n", string(data))
+			flusher.Flush()
+		}
+	}()
 
 	_, err := h.Generator.GenerateApp(r.Context(), apps.GenerateRequest{Prompt: req.Prompt}, emit)
 	if err != nil {
