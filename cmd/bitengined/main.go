@@ -58,7 +58,7 @@ func main() {
 	}
 	slog.Info("redis connected")
 
-	router := api.NewRouter(db, rdb)
+	router := api.NewRouter(db, rdb, cfg.JWTSecret)
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
