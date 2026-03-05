@@ -8,11 +8,12 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/bitEngine-AI/bitengine/internal/ai"
+	"github.com/bitEngine-AI/bitengine/internal/apps"
 	"github.com/bitEngine-AI/bitengine/internal/auth"
 	"github.com/bitEngine-AI/bitengine/internal/setup"
 )
 
-func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.OllamaClient, codegen *ai.CodeGenerator) chi.Router {
+func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.OllamaClient, codegen *ai.CodeGenerator, gen *apps.AppGenerator, svc *apps.AppService) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -49,6 +50,15 @@ func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.Olla
 			r.Get("/ai/models", aiH.Models)
 			r.Post("/ai/intent", aiH.AnalyzeIntent)
 			r.Post("/ai/generate", aiH.GenerateCode)
+
+			appsH := AppsHandler{Generator: gen, Service: svc}
+			r.Post("/apps", appsH.Create)
+			r.Get("/apps", appsH.List)
+			r.Get("/apps/{id}", appsH.Get)
+			r.Delete("/apps/{id}", appsH.Delete)
+			r.Post("/apps/{id}/start", appsH.Start)
+			r.Post("/apps/{id}/stop", appsH.Stop)
+			r.Get("/apps/{id}/logs", appsH.Logs)
 		})
 	})
 

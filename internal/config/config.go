@@ -16,6 +16,8 @@ type Config struct {
 	ListenAddr     string `env:"BITENGINE_LISTEN_ADDR,default=:9000"`
 	AnthropicKey   string `env:"ANTHROPIC_API_KEY,default="`
 	DeepSeekKey    string `env:"DEEPSEEK_API_KEY,default="`
+	CaddyAdminURL  string `env:"BITENGINE_CADDY_ADMIN_URL,default=http://localhost:2019"`
+	BaseDomain     string `env:"BITENGINE_BASE_DOMAIN,default=bit.local"`
 }
 
 // Load reads configuration from environment variables.

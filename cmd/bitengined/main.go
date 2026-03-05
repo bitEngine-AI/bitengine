@@ -17,7 +17,10 @@ import (
 
 	"github.com/bitEngine-AI/bitengine/api"
 	"github.com/bitEngine-AI/bitengine/internal/ai"
+	"github.com/bitEngine-AI/bitengine/internal/apps"
+	"github.com/bitEngine-AI/bitengine/internal/caddy"
 	"github.com/bitEngine-AI/bitengine/internal/config"
+	"github.com/bitEngine-AI/bitengine/internal/runtime"
 )
 
 func main() {
@@ -73,7 +76,33 @@ func main() {
 		slog.Warn("no cloud API key configured, code generation disabled")
 	}
 
-	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama, codegen)
+	containerMgr, err := runtime.NewContainerManager()
+	if err != nil {
+		slog.Warn("docker not available, app deployment disabled", "error", err)
+	} else {
+		defer containerMgr.Close()
+		slog.Info("docker connected")
+	}
+
+	caddyMgr := caddy.NewManager(cfg.CaddyAdminURL, cfg.BaseDomain)
+
+	var builder *runtime.ImageBuilder
+	if containerMgr != nil {
+		builder = runtime.NewImageBuilderFromManager(containerMgr)
+	}
+
+	gen := apps.NewAppGenerator(
+		ai.NewIntentEngine(ollama),
+		codegen,
+		ai.NewCodeReviewer(ollama),
+		builder,
+		containerMgr,
+		caddyMgr,
+		db,
+	)
+	svc := apps.NewAppService(db, containerMgr)
+
+	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama, codegen, gen, svc)
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
