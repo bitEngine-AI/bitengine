@@ -16,6 +16,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/bitEngine-AI/bitengine/api"
+	"github.com/bitEngine-AI/bitengine/internal/ai"
 	"github.com/bitEngine-AI/bitengine/internal/config"
 )
 
@@ -58,7 +59,14 @@ func main() {
 	}
 	slog.Info("redis connected")
 
-	router := api.NewRouter(db, rdb, cfg.JWTSecret)
+	ollama := ai.NewOllamaClient(cfg.OllamaURL)
+	if ollama.IsAvailable(ctx) {
+		slog.Info("ollama connected", "url", cfg.OllamaURL)
+	} else {
+		slog.Warn("ollama not available, AI features will be limited", "url", cfg.OllamaURL)
+	}
+
+	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama)
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,

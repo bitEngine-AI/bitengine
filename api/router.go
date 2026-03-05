@@ -7,11 +7,12 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/bitEngine-AI/bitengine/internal/ai"
 	"github.com/bitEngine-AI/bitengine/internal/auth"
 	"github.com/bitEngine-AI/bitengine/internal/setup"
 )
 
-func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string) chi.Router {
+func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.OllamaClient) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -27,6 +28,7 @@ func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string) chi.Router {
 	sys := SystemHandler{DB: db, RDB: rdb}
 	authH := AuthHandler{DB: db, JWTSecret: jwtSecret}
 	setupH := SetupHandler{Wizard: &setup.Wizard{DB: db}}
+	aiH := AIHandler{Ollama: ollama, Intent: ai.NewIntentEngine(ollama)}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public endpoints
@@ -39,7 +41,8 @@ func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string) chi.Router {
 		// Protected endpoints
 		r.Group(func(r chi.Router) {
 			r.Use(auth.Middleware(jwtSecret))
-			// Future protected routes go here (apps, ai, etc.)
+			r.Get("/ai/models", aiH.Models)
+			r.Post("/ai/intent", aiH.AnalyzeIntent)
 		})
 	})
 
