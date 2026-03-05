@@ -1,6 +1,10 @@
 :80 {
-    handle /api/* { reverse_proxy bitengined:9000 }
-    handle /ws    { reverse_proxy bitengined:9000 }
+    handle /api/* {
+        reverse_proxy be-core:9000
+    }
+    handle /ws {
+        reverse_proxy be-core:9000
+    }
     handle {
         root * /srv
         try_files {path} /index.html
