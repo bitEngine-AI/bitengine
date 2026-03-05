@@ -12,7 +12,7 @@ import (
 	"github.com/bitEngine-AI/bitengine/internal/setup"
 )
 
-func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.OllamaClient) chi.Router {
+func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.OllamaClient, codegen *ai.CodeGenerator) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -28,7 +28,12 @@ func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.Olla
 	sys := SystemHandler{DB: db, RDB: rdb}
 	authH := AuthHandler{DB: db, JWTSecret: jwtSecret}
 	setupH := SetupHandler{Wizard: &setup.Wizard{DB: db}}
-	aiH := AIHandler{Ollama: ollama, Intent: ai.NewIntentEngine(ollama)}
+	aiH := AIHandler{
+		Ollama:   ollama,
+		Intent:   ai.NewIntentEngine(ollama),
+		CodeGen:  codegen,
+		Reviewer: ai.NewCodeReviewer(ollama),
+	}
 
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public endpoints
@@ -43,6 +48,7 @@ func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.Olla
 			r.Use(auth.Middleware(jwtSecret))
 			r.Get("/ai/models", aiH.Models)
 			r.Post("/ai/intent", aiH.AnalyzeIntent)
+			r.Post("/ai/generate", aiH.GenerateCode)
 		})
 	})
 

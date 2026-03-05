@@ -9,8 +9,10 @@ import (
 
 // AIHandler handles AI-related API endpoints.
 type AIHandler struct {
-	Ollama *ai.OllamaClient
-	Intent *ai.IntentEngine
+	Ollama   *ai.OllamaClient
+	Intent   *ai.IntentEngine
+	CodeGen  *ai.CodeGenerator
+	Reviewer *ai.CodeReviewer
 }
 
 // Models returns the list of locally available Ollama models.
@@ -78,6 +80,42 @@ func (h *AIHandler) AnalyzeIntent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, result)
+}
+
+// GenerateCode takes an IntentResult and produces application code (debug endpoint).
+func (h *AIHandler) GenerateCode(w http.ResponseWriter, r *http.Request) {
+	if !h.CodeGen.IsAvailable() {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+			"error": map[string]any{
+				"code":    "NO_API_KEY",
+				"message": "no cloud API key configured (set ANTHROPIC_API_KEY or DEEPSEEK_API_KEY)",
+			},
+		})
+		return
+	}
+
+	var intent ai.IntentResult
+	if err := json.NewDecoder(r.Body).Decode(&intent); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"error": map[string]any{
+				"code":    "BAD_REQUEST",
+				"message": "invalid request body",
+			},
+		})
+		return
+	}
+
+	code, err := h.CodeGen.Generate(r.Context(), &intent)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"error": map[string]any{
+				"code":    "CODEGEN_ERROR",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, code)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

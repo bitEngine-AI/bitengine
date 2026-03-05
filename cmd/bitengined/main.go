@@ -66,7 +66,14 @@ func main() {
 		slog.Warn("ollama not available, AI features will be limited", "url", cfg.OllamaURL)
 	}
 
-	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama)
+	codegen := ai.NewCodeGenerator(cfg.AnthropicKey, cfg.DeepSeekKey)
+	if codegen.IsAvailable() {
+		slog.Info("code generator ready")
+	} else {
+		slog.Warn("no cloud API key configured, code generation disabled")
+	}
+
+	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama, codegen)
 
 	srv := &http.Server{
 		Addr:         cfg.ListenAddr,
