@@ -1,0 +1,59 @@
+services:
+  bitengined:
+    build: { context: .., dockerfile: deploy/Dockerfile.dev }
+    container_name: be-core
+    ports: ["9000:9000"]
+    volumes:
+      - ..:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      - go_cache:/go/pkg/mod
+    environment:
+      BITENGINE_JWT_SECRET: dev-secret
+      BITENGINE_DATABASE_URL: postgres://bitengine:bitengine@postgresql:5432/bitengine?sslmode=disable
+      BITENGINE_REDIS_URL: redis://redis:6379/0
+      BITENGINE_OLLAMA_URL: http://ollama:11434
+      DOCKER_HOST: unix:///var/run/docker.sock
+    entrypoint: ["sh", "/app/deploy/entrypoint-dev.sh"]
+    depends_on:
+      postgresql: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [ef]
+
+  postgresql:
+    image: postgres:16-alpine
+    container_name: be-postgres
+    environment: { POSTGRES_USER: bitengine, POSTGRES_PASSWORD: bitengine, POSTGRES_DB: bitengine }
+    ports: ["5432:5432"]
+    volumes: [pg_data:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U bitengine"], interval: 3s, retries: 10 }
+    networks: [ef]
+
+  redis:
+    image: redis:7-alpine
+    container_name: be-redis
+    ports: ["6379:6379"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 3s, retries: 10 }
+    networks: [ef]
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: be-ollama
+    ports: ["11434:11434"]
+    volumes: [ollama_data:/root/.ollama]
+    deploy: { resources: { reservations: { memory: 8G } } }
+    networks: [ef]
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: be-caddy
+    ports: ["80:80"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile"]
+    depends_on: [bitengined]
+    networks: [ef]
+
+networks:
+  ef: { driver: bridge }
+volumes:
+  pg_data:
+  ollama_data:
+  go_cache:
