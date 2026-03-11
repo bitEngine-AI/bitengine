@@ -1,0 +1,59 @@
+{
+  "setup": {
+    "title": "初始设置 — 创建管理员账户",
+    "login": "登录",
+    "username": "用户名",
+    "password": "密码",
+    "confirmPassword": "确认密码",
+    "usernamePlaceholder": "admin",
+    "passwordPlaceholder": "至少 6 个字符",
+    "confirmPlaceholder": "再次输入密码",
+    "loginPlaceholder": "输入密码",
+    "creating": "创建中...",
+    "createAccount": "创建账户",
+    "loggingIn": "登录中...",
+    "loginButton": "登录",
+    "errorPasswordMismatch": "两次输入的密码不一致",
+    "errorPasswordShort": "密码至少需要 6 个字符",
+    "errorUsernameRequired": "请输入用户名",
+    "errorSetupFailed": "设置失败，请重试",
+    "errorLoginRequired": "请输入用户名和密码",
+    "errorLoginFailed": "登录失败，请检查用户名和密码"
+  },
+  "desktop": {
+    "logout": "退出",
+    "loading": "加载中...",
+    "empty": "还没有应用，点击右下角按钮创建第一个"
+  },
+  "ai": {
+    "title": "新建应用",
+    "success": "应用创建成功",
+    "continueCreate": "继续创建",
+    "hint": "描述你想要的应用，AI 将自动生成并部署。",
+    "placeholder": "描述你想要的应用...",
+    "errorGenerate": "生成失败",
+    "errorConnect": "连接失败"
+  },
+  "app": {
+    "stop": "停止",
+    "start": "启动",
+    "visit": "访问"
+  },
+  "progress": {
+    "steps": {
+      "intent": "意图理解",
+      "codegen": "代码生成",
+      "review": "代码审查",
+      "build": "镜像构建",
+      "deploy": "容器部署",
+      "route": "路由配置"
+    },
+    "status": {
+      "pending": "等待中",
+      "running": "进行中...",
+      "done": "完成",
+      "warning": "警告",
+      "error": "失败"
+    }
+  }
+}

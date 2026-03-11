@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Cpu, LogOut, Plus } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../stores/authStore'
 import { useAppStore } from '../stores/appStore'
 import AIPanel from '../components/AIPanel'
 import AppCard from '../components/AppCard'
 
 export default function Desktop() {
+  const { t } = useTranslation()
   const { apps, loading, fetchApps } = useAppStore()
   const { logout } = useAuthStore()
   const [showAI, setShowAI] = useState(false)
@@ -27,18 +29,18 @@ export default function Desktop() {
           className="text-gray-400 hover:text-gray-200 flex items-center gap-2 transition"
         >
           <LogOut className="w-4 h-4" />
-          退出
+          {t('desktop.logout')}
         </button>
       </header>
 
       {/* App Grid */}
       <main className="p-6">
         {loading ? (
-          <div className="text-center text-gray-500 py-20">加载中...</div>
+          <div className="text-center text-gray-500 py-20">{t('desktop.loading')}</div>
         ) : apps.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-500 mb-4">
-              还没有应用，点击右下角按钮创建第一个
+              {t('desktop.empty')}
             </p>
           </div>
         ) : (

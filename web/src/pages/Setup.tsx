@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Cpu } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../stores/authStore'
 import { setupAPI } from '../api/client'
 
@@ -10,6 +11,7 @@ interface SetupProps {
 
 export default function Setup({ onSetupComplete }: SetupProps) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const { isAuthenticated, login } = useAuthStore()
 
   const [phase, setPhase] = useState<'loading' | 'create' | 'login'>('loading')
@@ -35,15 +37,15 @@ export default function Setup({ onSetupComplete }: SetupProps) {
     setError('')
 
     if (password !== confirmPassword) {
-      setError('两次输入的密码不一致')
+      setError(t('setup.errorPasswordMismatch'))
       return
     }
     if (password.length < 6) {
-      setError('密码至少需要 6 个字符')
+      setError(t('setup.errorPasswordShort'))
       return
     }
     if (!username.trim()) {
-      setError('请输入用户名')
+      setError(t('setup.errorUsernameRequired'))
       return
     }
 
@@ -55,7 +57,7 @@ export default function Setup({ onSetupComplete }: SetupProps) {
       setPassword('')
       setConfirmPassword('')
     } catch (err: any) {
-      setError(err.message || '设置失败，请重试')
+      setError(err.message || t('setup.errorSetupFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -66,7 +68,7 @@ export default function Setup({ onSetupComplete }: SetupProps) {
     setError('')
 
     if (!username.trim() || !password) {
-      setError('请输入用户名和密码')
+      setError(t('setup.errorLoginRequired'))
       return
     }
 
@@ -75,7 +77,7 @@ export default function Setup({ onSetupComplete }: SetupProps) {
       await login(username, password)
       navigate('/desktop', { replace: true })
     } catch (err: any) {
-      setError(err.message || '登录失败，请检查用户名和密码')
+      setError(err.message || t('setup.errorLoginFailed'))
     } finally {
       setSubmitting(false)
     }
@@ -96,39 +98,39 @@ export default function Setup({ onSetupComplete }: SetupProps) {
         {phase === 'create' ? (
           <>
             <p className="text-center text-gray-400 mb-8">
-              初始设置 &mdash; 创建管理员账户
+              {t('setup.title')}
             </p>
 
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">用户名</label>
+                <label className="block text-sm text-gray-400 mb-1">{t('setup.username')}</label>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="admin"
+                  placeholder={t('setup.usernamePlaceholder')}
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">密码</label>
+                <label className="block text-sm text-gray-400 mb-1">{t('setup.password')}</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="至少 6 个字符"
+                  placeholder={t('setup.passwordPlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">确认密码</label>
+                <label className="block text-sm text-gray-400 mb-1">{t('setup.confirmPassword')}</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="再次输入密码"
+                  placeholder={t('setup.confirmPlaceholder')}
                 />
               </div>
 
@@ -139,34 +141,34 @@ export default function Setup({ onSetupComplete }: SetupProps) {
                 disabled={submitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg py-3 font-medium transition"
               >
-                {submitting ? '创建中...' : '创建账户'}
+                {submitting ? t('setup.creating') : t('setup.createAccount')}
               </button>
             </form>
           </>
         ) : (
           <>
-            <p className="text-center text-gray-400 mb-8">登录</p>
+            <p className="text-center text-gray-400 mb-8">{t('setup.login')}</p>
 
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-1">用户名</label>
+                <label className="block text-sm text-gray-400 mb-1">{t('setup.username')}</label>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="admin"
+                  placeholder={t('setup.usernamePlaceholder')}
                   autoFocus
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">密码</label>
+                <label className="block text-sm text-gray-400 mb-1">{t('setup.password')}</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="输入密码"
+                  placeholder={t('setup.loginPlaceholder')}
                 />
               </div>
 
@@ -177,7 +179,7 @@ export default function Setup({ onSetupComplete }: SetupProps) {
                 disabled={submitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg py-3 font-medium transition"
               >
-                {submitting ? '登录中...' : '登录'}
+                {submitting ? t('setup.loggingIn') : t('setup.loginButton')}
               </button>
             </form>
           </>

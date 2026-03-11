@@ -1,4 +1,5 @@
 import { Play, Square, Trash2, ExternalLink } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { appsAPI, type AppInfo } from '../api/client'
 import { useAppStore } from '../stores/appStore'
 
@@ -14,6 +15,7 @@ const STATUS_DOT: Record<string, string> = {
 }
 
 export default function AppCard({ app }: AppCardProps) {
+  const { t } = useTranslation()
   const dotClass = STATUS_DOT[app.status] || 'bg-gray-500'
 
   async function handleStart() {
@@ -62,7 +64,7 @@ export default function AppCard({ app }: AppCardProps) {
             className="inline-flex items-center gap-1 text-sm text-gray-300 hover:text-gray-100 transition-colors"
           >
             <Square className="w-4 h-4" />
-            停止
+            {t('app.stop')}
           </button>
         ) : (
           <button
@@ -70,7 +72,7 @@ export default function AppCard({ app }: AppCardProps) {
             className="inline-flex items-center gap-1 text-sm text-gray-300 hover:text-gray-100 transition-colors"
           >
             <Play className="w-4 h-4" />
-            启动
+            {t('app.start')}
           </button>
         )}
 
@@ -81,7 +83,7 @@ export default function AppCard({ app }: AppCardProps) {
           className="inline-flex items-center gap-1 text-sm text-gray-300 hover:text-gray-100 transition-colors"
         >
           <ExternalLink className="w-4 h-4" />
-          访问
+          {t('app.visit')}
         </a>
 
         <button

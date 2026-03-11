@@ -1,4 +1,5 @@
 import { Loader2, Check, AlertCircle, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export interface Step {
   step: number
@@ -10,28 +11,14 @@ interface ProgressProps {
   steps: Step[]
 }
 
-const STEP_LABELS: Record<string, string> = {
-  intent: '意图理解',
-  codegen: '代码生成',
-  review: '代码审查',
-  build: '镜像构建',
-  deploy: '容器部署',
-  route: '路由配置',
-}
-
-const STATUS_TEXT: Record<Step['status'], string> = {
-  pending: '等待中',
-  running: '进行中...',
-  done: '完成',
-  warning: '警告',
-  error: '失败',
-}
-
 export default function Progress({ steps }: ProgressProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="space-y-3">
       {steps.map((s) => {
-        const label = STEP_LABELS[s.name] || s.name
+        const label = t(`progress.steps.${s.name}`, s.name)
+        const statusText = t(`progress.status.${s.status}`)
         return (
           <div key={s.step} className="flex items-center gap-3">
             {s.status === 'pending' && (
@@ -59,7 +46,7 @@ export default function Progress({ steps }: ProgressProps) {
                 {label}
               </span>
               <span className="text-xs text-gray-500">
-                {STATUS_TEXT[s.status]}
+                {statusText}
               </span>
             </div>
           </div>

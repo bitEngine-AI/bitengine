@@ -1,0 +1,59 @@
+{
+  "setup": {
+    "title": "Initial Setup — Create Admin Account",
+    "login": "Login",
+    "username": "Username",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "usernamePlaceholder": "admin",
+    "passwordPlaceholder": "At least 6 characters",
+    "confirmPlaceholder": "Enter password again",
+    "loginPlaceholder": "Enter password",
+    "creating": "Creating...",
+    "createAccount": "Create Account",
+    "loggingIn": "Logging in...",
+    "loginButton": "Login",
+    "errorPasswordMismatch": "Passwords do not match",
+    "errorPasswordShort": "Password must be at least 6 characters",
+    "errorUsernameRequired": "Username is required",
+    "errorSetupFailed": "Setup failed, please try again",
+    "errorLoginRequired": "Please enter username and password",
+    "errorLoginFailed": "Login failed, please check your credentials"
+  },
+  "desktop": {
+    "logout": "Logout",
+    "loading": "Loading...",
+    "empty": "No apps yet. Click the button below to create your first one."
+  },
+  "ai": {
+    "title": "New App",
+    "success": "App created successfully",
+    "continueCreate": "Create Another",
+    "hint": "Describe the app you want, and AI will generate and deploy it automatically.",
+    "placeholder": "Describe the app you want...",
+    "errorGenerate": "Generation failed",
+    "errorConnect": "Connection failed"
+  },
+  "app": {
+    "stop": "Stop",
+    "start": "Start",
+    "visit": "Visit"
+  },
+  "progress": {
+    "steps": {
+      "intent": "Intent Analysis",
+      "codegen": "Code Generation",
+      "review": "Code Review",
+      "build": "Image Build",
+      "deploy": "Container Deploy",
+      "route": "Route Setup"
+    },
+    "status": {
+      "pending": "Pending",
+      "running": "Running...",
+      "done": "Done",
+      "warning": "Warning",
+      "error": "Failed"
+    }
+  }
+}

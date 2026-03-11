@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { X, Send, ExternalLink } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { createAppSSE } from '../api/client'
 import { useAppStore } from '../stores/appStore'
 import Progress, { type Step } from './Progress'
@@ -18,6 +19,7 @@ const INITIAL_STEPS: Step[] = [
 ]
 
 export default function AIPanel({ onClose }: AIPanelProps) {
+  const { t } = useTranslation()
   const [prompt, setPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
   const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS)
@@ -59,12 +61,12 @@ export default function AIPanel({ onClose }: AIPanelProps) {
           setGenerating(false)
           useAppStore.getState().fetchApps()
         } else if (event === 'error') {
-          setError(data.message || '生成失败')
+          setError(data.message || t('ai.errorGenerate'))
           setGenerating(false)
         }
       },
       (err) => {
-        setError(err.message || '连接失败')
+        setError(err.message || t('ai.errorConnect'))
         setGenerating(false)
       },
     )
@@ -90,7 +92,7 @@ export default function AIPanel({ onClose }: AIPanelProps) {
     <div className="fixed bottom-6 right-6 w-96 bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 flex flex-col max-h-[80vh] z-50">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-        <h2 className="text-sm font-semibold text-gray-100">新建应用</h2>
+        <h2 className="text-sm font-semibold text-gray-100">{t('ai.title')}</h2>
         <button
           onClick={handleClose}
           className="text-gray-400 hover:text-gray-200 transition-colors"
@@ -112,7 +114,7 @@ export default function AIPanel({ onClose }: AIPanelProps) {
         {result && !generating && (
           <div className="space-y-3">
             <div className="p-3 bg-green-900/30 border border-green-800 rounded-lg text-sm text-green-300">
-              应用创建成功
+              {t('ai.success')}
             </div>
             <a
               href={result.url}
@@ -127,14 +129,14 @@ export default function AIPanel({ onClose }: AIPanelProps) {
               onClick={handleReset}
               className="text-sm text-gray-400 hover:text-gray-200 transition-colors"
             >
-              继续创建
+              {t('ai.continueCreate')}
             </button>
           </div>
         )}
 
         {!generating && !result && !error && (
           <p className="text-sm text-gray-500">
-            描述你想要的应用，AI 将自动生成并部署。
+            {t('ai.hint')}
           </p>
         )}
       </div>
@@ -148,7 +150,7 @@ export default function AIPanel({ onClose }: AIPanelProps) {
           <input
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="描述你想要的应用..."
+            placeholder={t('ai.placeholder')}
             className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
