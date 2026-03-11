@@ -27,11 +27,11 @@ type GeneratedCode struct {
 
 // NewCodeGen creates the appropriate code generator based on available API keys.
 // If a cloud API key is configured, returns CloudGenerator; otherwise LocalGenerator.
-func NewCodeGen(anthropicKey, deepseekKey string, ollama *OllamaClient) CodeGen {
+func NewCodeGen(anthropicKey, deepseekKey string, ollama *OllamaClient, localModel ...string) CodeGen {
 	if anthropicKey != "" || deepseekKey != "" {
 		return NewCloudGenerator(anthropicKey, deepseekKey)
 	}
-	return NewLocalGenerator(ollama)
+	return NewLocalGenerator(ollama, localModel...)
 }
 
 // ── Cloud Generator ──────────────────────────────────────────────────────────
@@ -229,7 +229,7 @@ func (g *CloudGenerator) callDeepSeek(ctx context.Context, userPrompt string) (s
 
 // ── Local Generator ──────────────────────────────────────────────────────────
 
-const localModel = "qwen3:4b"
+const defaultLocalModel = "qwen3:4b"
 
 const localSystemPrompt = `You are a code generator. Generate a simple but COMPLETE Flask web application.
 
@@ -255,11 +255,16 @@ IMPORTANT: The app.py must be a SINGLE complete Python file. Include ALL imports
 // LocalGenerator generates Flask app code using a local Ollama model.
 type LocalGenerator struct {
 	client *OllamaClient
+	model  string
 }
 
 // NewLocalGenerator creates a LocalGenerator backed by the given Ollama client.
-func NewLocalGenerator(client *OllamaClient) *LocalGenerator {
-	return &LocalGenerator{client: client}
+func NewLocalGenerator(client *OllamaClient, model ...string) *LocalGenerator {
+	m := defaultLocalModel
+	if len(model) > 0 && model[0] != "" {
+		m = model[0]
+	}
+	return &LocalGenerator{client: client, model: m}
 }
 
 func (g *LocalGenerator) Mode() string { return "local" }
@@ -267,11 +272,11 @@ func (g *LocalGenerator) Mode() string { return "local" }
 // Generate takes an IntentResult and produces application code via local Ollama model.
 func (g *LocalGenerator) Generate(ctx context.Context, intent *IntentResult) (*GeneratedCode, error) {
 	userPrompt := buildLocalPrompt(intent)
-	slog.Info("generating code", "mode", "local", "model", localModel, "app_name", intent.AppName)
+	slog.Info("generating code", "mode", "local", "model", g.model, "app_name", intent.AppName)
 
 	thinkFalse := false
 	resp, err := g.client.Chat(ctx, ChatRequest{
-		Model: localModel,
+		Model: g.model,
 		Messages: []ChatMessage{
 			{Role: "system", Content: localSystemPrompt},
 			{Role: "user", Content: userPrompt},

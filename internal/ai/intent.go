@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const intentModel = "qwen3:4b"
+const defaultIntentModel = "qwen3:4b"
 
 // IntentResult is the structured output from intent analysis.
 type IntentResult struct {
@@ -41,11 +41,15 @@ Rules:
 // IntentEngine analyzes user prompts to extract structured intent.
 type IntentEngine struct {
 	client *OllamaClient
+	model  string
 }
 
 // NewIntentEngine creates a new IntentEngine backed by the given Ollama client.
-func NewIntentEngine(client *OllamaClient) *IntentEngine {
-	return &IntentEngine{client: client}
+func NewIntentEngine(client *OllamaClient, model string) *IntentEngine {
+	if model == "" {
+		model = defaultIntentModel
+	}
+	return &IntentEngine{client: client, model: model}
 }
 
 // Analyze takes a user prompt and returns structured intent.
@@ -55,11 +59,11 @@ func (e *IntentEngine) Analyze(ctx context.Context, input string) (*IntentResult
 		return nil, fmt.Errorf("intent: empty input")
 	}
 
-	slog.Info("analyzing intent", "input", input, "model", intentModel)
+	slog.Info("analyzing intent", "input", input, "model", e.model)
 
 	thinkFalse := false
 	resp, err := e.client.Chat(ctx, ChatRequest{
-		Model: intentModel,
+		Model: e.model,
 		Messages: []ChatMessage{
 			{Role: "system", Content: systemPrompt},
 			{Role: "user", Content: input},

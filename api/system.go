@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/bitEngine-AI/bitengine/internal/ai"
 	"github.com/bitEngine-AI/bitengine/internal/monitor"
 )
 
@@ -16,6 +17,8 @@ type SystemHandler struct {
 	DB          *sqlx.DB
 	RDB         *redis.Client
 	CodegenMode string
+	Hardware    *ai.HardwareInfo
+	Models      *ai.ModelConfig
 }
 
 func (h *SystemHandler) Status(w http.ResponseWriter, r *http.Request) {
@@ -34,12 +37,14 @@ func (h *SystemHandler) Status(w http.ResponseWriter, r *http.Request) {
 		status = "degraded"
 	}
 
-	resp := map[string]string{
+	resp := map[string]any{
 		"status":       status,
 		"version":      Version,
 		"db":           dbStatus,
 		"redis":        redisStatus,
 		"codegen_mode": h.CodegenMode,
+		"hardware":     h.Hardware,
+		"models":       h.Models,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

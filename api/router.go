@@ -13,7 +13,7 @@ import (
 	"github.com/bitEngine-AI/bitengine/internal/setup"
 )
 
-func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.OllamaClient, codegen ai.CodeGen, gen *apps.AppGenerator, svc *apps.AppService, tplSvc *apps.TemplateService) chi.Router {
+func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.OllamaClient, codegen ai.CodeGen, gen *apps.AppGenerator, svc *apps.AppService, tplSvc *apps.TemplateService, hwInfo *ai.HardwareInfo, models *ai.ModelConfig) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
@@ -26,14 +26,14 @@ func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.Olla
 		MaxAge:         300,
 	}))
 
-	sys := SystemHandler{DB: db, RDB: rdb, CodegenMode: codegen.Mode()}
+	sys := SystemHandler{DB: db, RDB: rdb, CodegenMode: codegen.Mode(), Hardware: hwInfo, Models: models}
 	authH := AuthHandler{DB: db, JWTSecret: jwtSecret}
 	setupH := SetupHandler{Wizard: &setup.Wizard{DB: db}}
 	aiH := AIHandler{
 		Ollama:   ollama,
-		Intent:   ai.NewIntentEngine(ollama),
+		Intent:   ai.NewIntentEngine(ollama, models.IntentModel),
 		CodeGen:  codegen,
-		Reviewer: ai.NewCodeReviewer(ollama),
+		Reviewer: ai.NewCodeReviewer(ollama, models.ReviewModel),
 	}
 
 	r.Route("/api/v1", func(r chi.Router) {

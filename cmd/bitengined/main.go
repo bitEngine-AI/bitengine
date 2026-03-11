@@ -63,13 +63,27 @@ func main() {
 	slog.Info("redis connected")
 
 	ollama := ai.NewOllamaClient(cfg.OllamaURL)
+	var hwInfo *ai.HardwareInfo
+	var models *ai.ModelConfig
 	if ollama.IsAvailable(ctx) {
 		slog.Info("ollama connected", "url", cfg.OllamaURL)
+		hwInfo, models = ai.DetectHardware(ctx, ollama)
+		slog.Info("hardware detection complete",
+			"tier", hwInfo.Tier,
+			"has_gpu", hwInfo.HasGPU,
+			"detected_by", hwInfo.DetectedBy,
+			"intent_model", models.IntentModel,
+			"review_model", models.ReviewModel,
+			"codegen_model", models.CodegenModel,
+		)
 	} else {
 		slog.Warn("ollama not available, AI features will be limited", "url", cfg.OllamaURL)
+		hwInfo = &ai.HardwareInfo{Tier: ai.TierCPU, DetectedBy: "default"}
+		defaultModels := ai.SelectModels(ai.TierCPU)
+		models = &defaultModels
 	}
 
-	codegen := ai.NewCodeGen(cfg.AnthropicKey, cfg.DeepSeekKey, ollama)
+	codegen := ai.NewCodeGen(cfg.AnthropicKey, cfg.DeepSeekKey, ollama, models.CodegenModel)
 	slog.Info("code generator ready", "mode", codegen.Mode())
 
 	containerMgr, err := runtime.NewContainerManager()
@@ -88,9 +102,9 @@ func main() {
 	}
 
 	gen := apps.NewAppGenerator(
-		ai.NewIntentEngine(ollama),
+		ai.NewIntentEngine(ollama, models.IntentModel),
 		codegen,
-		ai.NewCodeReviewer(ollama),
+		ai.NewCodeReviewer(ollama, models.ReviewModel),
 		builder,
 		containerMgr,
 		caddyMgr,
@@ -99,7 +113,7 @@ func main() {
 	svc := apps.NewAppService(db, containerMgr)
 	tplSvc := apps.NewTemplateService("templates", builder, containerMgr, caddyMgr, db)
 
-	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama, codegen, gen, svc, tplSvc)
+	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama, codegen, gen, svc, tplSvc, hwInfo, models)
 
 	srv := &http.Server{
 		Addr:        cfg.ListenAddr,

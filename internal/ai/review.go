@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-const reviewModel = "phi4-mini:latest"
+const defaultReviewModel = "phi4-mini:latest"
 
 // ReviewResult holds the output of the code review step.
 type ReviewResult struct {
@@ -36,20 +36,24 @@ Be pragmatic: this is a simple auto-generated Flask app with SQLite. Minor style
 // CodeReviewer reviews generated code using a local model via Ollama.
 type CodeReviewer struct {
 	client *OllamaClient
+	model  string
 }
 
 // NewCodeReviewer creates a new CodeReviewer.
-func NewCodeReviewer(client *OllamaClient) *CodeReviewer {
-	return &CodeReviewer{client: client}
+func NewCodeReviewer(client *OllamaClient, model string) *CodeReviewer {
+	if model == "" {
+		model = defaultReviewModel
+	}
+	return &CodeReviewer{client: client, model: model}
 }
 
 // Review analyzes generated code for security issues.
 func (r *CodeReviewer) Review(ctx context.Context, code *GeneratedCode) (*ReviewResult, error) {
 	prompt := buildReviewPrompt(code)
-	slog.Info("reviewing code", "model", reviewModel, "file_count", len(code.Files))
+	slog.Info("reviewing code", "model", r.model, "file_count", len(code.Files))
 
 	resp, err := r.client.Chat(ctx, ChatRequest{
-		Model: reviewModel,
+		Model: r.model,
 		Messages: []ChatMessage{
 			{Role: "system", Content: reviewSystemPrompt},
 			{Role: "user", Content: prompt},
