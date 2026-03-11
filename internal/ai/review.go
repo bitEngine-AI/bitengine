@@ -67,6 +67,20 @@ func (r *CodeReviewer) Review(ctx context.Context, code *GeneratedCode) (*Review
 	if strings.TrimSpace(content) == "" && resp.Message.Thinking != "" {
 		content = resp.Message.Thinking
 	}
+	if idx := strings.Index(content, "</think>"); idx >= 0 {
+		content = content[idx+len("</think>"):]
+	}
+	// Strip markdown fences
+	trimmed := strings.TrimSpace(content)
+	if strings.HasPrefix(trimmed, "```") {
+		if idx := strings.Index(trimmed, "\n"); idx >= 0 {
+			trimmed = trimmed[idx+1:]
+		}
+		if last := strings.LastIndex(trimmed, "```"); last >= 0 {
+			trimmed = trimmed[:last]
+		}
+		content = strings.TrimSpace(trimmed)
+	}
 	if idx := strings.Index(content, "{"); idx >= 0 {
 		if end := strings.LastIndex(content, "}"); end > idx {
 			content = content[idx : end+1]

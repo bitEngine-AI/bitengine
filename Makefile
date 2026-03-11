@@ -31,6 +31,9 @@ shell:        ## 进入容器
 db:           ## 进入数据库
 	docker exec -it be-postgres psql -U bitengine
 
+web:          ## 构建前端
+	docker run --rm -v $(PWD)/web:/app -w /app node:20-alpine sh -c "npm install && npm run build && chown -R $(shell id -u):$(shell id -g) dist"
+
 clean:        ## 清理
 	$(COMPOSE) down -v
 
@@ -38,4 +41,4 @@ help:         ## 帮助
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "\033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
 .DEFAULT_GOAL := help
-.PHONY: dev dev-bg stop test logs status models shell db clean help
+.PHONY: dev dev-bg stop test logs status models shell db web clean help

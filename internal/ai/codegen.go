@@ -231,8 +231,7 @@ func (g *CloudGenerator) callDeepSeek(ctx context.Context, userPrompt string) (s
 
 const localModel = "qwen3:4b"
 
-const localSystemPrompt = `/no_think
-You are a code generator. Generate a simple but COMPLETE Flask web application.
+const localSystemPrompt = `You are a code generator. Generate a simple but COMPLETE Flask web application.
 
 CRITICAL RULES:
 - Output ONLY a JSON object, nothing else
@@ -270,12 +269,14 @@ func (g *LocalGenerator) Generate(ctx context.Context, intent *IntentResult) (*G
 	userPrompt := buildLocalPrompt(intent)
 	slog.Info("generating code", "mode", "local", "model", localModel, "app_name", intent.AppName)
 
+	thinkFalse := false
 	resp, err := g.client.Chat(ctx, ChatRequest{
 		Model: localModel,
 		Messages: []ChatMessage{
 			{Role: "system", Content: localSystemPrompt},
 			{Role: "user", Content: userPrompt},
 		},
+		Think: &thinkFalse,
 		Options: map[string]any{
 			"temperature": 0.3,
 			"num_predict": 8192,
@@ -288,6 +289,9 @@ func (g *LocalGenerator) Generate(ctx context.Context, intent *IntentResult) (*G
 	content := resp.Message.Content
 	if strings.TrimSpace(content) == "" && resp.Message.Thinking != "" {
 		content = resp.Message.Thinking
+	}
+	if idx := strings.Index(content, "</think>"); idx >= 0 {
+		content = content[idx+len("</think>"):]
 	}
 
 	result, err := parseGeneratedCode(content)

@@ -18,7 +18,7 @@ export const useAppStore = create<AppState>((set) => ({
     set({ loading: true })
     try {
       const apps = await appsAPI.list()
-      set({ apps, loading: false })
+      set({ apps: apps || [], loading: false })
     } catch {
       set({ loading: false })
     }

@@ -4,6 +4,25 @@ function getToken(): string | null {
   return localStorage.getItem('token')
 }
 
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = localStorage.getItem('refreshToken')
+  if (!refreshToken) return false
+  try {
+    const resp = await fetch(`${BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+    if (!resp.ok) return false
+    const data = await resp.json()
+    localStorage.setItem('token', data.access_token)
+    localStorage.setItem('refreshToken', data.refresh_token)
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
   const headers: Record<string, string> = {
@@ -12,7 +31,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const resp = await fetch(`${BASE}${path}`, { ...options, headers })
+  let resp = await fetch(`${BASE}${path}`, { ...options, headers })
+  if (resp.status === 401 && await tryRefreshToken()) {
+    headers['Authorization'] = `Bearer ${getToken()}`
+    resp = await fetch(`${BASE}${path}`, { ...options, headers })
+  }
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}))
     throw new Error(body?.error?.message || `HTTP ${resp.status}`)
@@ -27,19 +50,43 @@ export function createAppSSE(
   onError: (err: Error) => void,
 ): AbortController {
   const controller = new AbortController()
-  const token = getToken()
 
-  fetch(`${BASE}/apps`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ prompt }),
-    signal: controller.signal,
-  })
+  async function doFetch() {
+    const token = getToken()
+    const resp = await fetch(`${BASE}/apps`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal,
+    })
+
+    if (resp.status === 401) {
+      const refreshed = await tryRefreshToken()
+      if (refreshed) {
+        const newToken = getToken()
+        const retryResp = await fetch(`${BASE}/apps`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+          },
+          body: JSON.stringify({ prompt }),
+          signal: controller.signal,
+        })
+        if (!retryResp.ok) throw new Error(`HTTP ${retryResp.status}`)
+        return retryResp
+      }
+      throw new Error('HTTP 401')
+    }
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    return resp
+  }
+
+  doFetch()
     .then(async (resp) => {
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
       const reader = resp.body!.getReader()
       const decoder = new TextDecoder()
       let buffer = ''

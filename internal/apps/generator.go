@@ -166,12 +166,13 @@ func (g *AppGenerator) GenerateApp(ctx context.Context, req GenerateRequest, emi
 	// ── Step 6: Caddy Route ────────────────────────────────────────────
 	emit(SSEEvent{Event: "step", Data: StepData{Step: 6, Name: "route", Status: "running"}})
 
-	domain := fmt.Sprintf("app-%s.%s", slug, g.Caddy.BaseDomain)
+	domain := fmt.Sprintf("localhost:%d", port)
 	appURL := fmt.Sprintf("http://localhost:%d", port)
 	if err := g.Caddy.AddRoute(ctx, slug, port); err != nil {
 		slog.Warn("caddy route failed (app still accessible via port)", "app_id", appID, "error", err)
 		emit(SSEEvent{Event: "step", Data: StepData{Step: 6, Name: "route", Status: "warning", Result: map[string]string{"reason": err.Error()}}})
 	} else {
+		domain = fmt.Sprintf("app-%s.%s", slug, g.Caddy.BaseDomain)
 		appURL = fmt.Sprintf("http://%s", domain)
 		slog.Info("route added", "app_id", appID, "domain", domain)
 		emit(SSEEvent{Event: "step", Data: StepData{Step: 6, Name: "route", Status: "done", Result: map[string]string{"domain": domain}}})

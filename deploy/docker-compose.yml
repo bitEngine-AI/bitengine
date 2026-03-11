@@ -7,6 +7,7 @@ services:
       - ..:/app
       - /var/run/docker.sock:/var/run/docker.sock
       - go_cache:/go/pkg/mod
+    env_file: ../.env
     environment:
       BITENGINE_JWT_SECRET: dev-secret
       BITENGINE_DATABASE_URL: postgres://bitengine:bitengine@postgresql:5432/bitengine?sslmode=disable

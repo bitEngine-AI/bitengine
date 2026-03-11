@@ -40,7 +40,7 @@ func NewAppService(db *sqlx.DB, container *runtime.ContainerManager) *AppService
 
 // List returns all apps ordered by creation time descending.
 func (s *AppService) List(ctx context.Context) ([]App, error) {
-	var apps []App
+	apps := make([]App, 0)
 	if err := s.DB.SelectContext(ctx, &apps, `SELECT * FROM runtime.apps ORDER BY created_at DESC`); err != nil {
 		return nil, fmt.Errorf("apps: %w", err)
 	}
@@ -73,18 +73,19 @@ func (s *AppService) Delete(ctx context.Context, id string) error {
 		return fmt.Errorf("apps: %w", err)
 	}
 
-	if app.ContainerID != "" {
-		if stopErr := s.Container.Stop(ctx, app.ContainerID); stopErr != nil {
-			slog.Warn("failed to stop container during delete", "id", id, "error", stopErr)
+	if s.Container != nil {
+		if app.ContainerID != "" {
+			if stopErr := s.Container.Stop(ctx, app.ContainerID); stopErr != nil {
+				slog.Warn("failed to stop container during delete", "id", id, "error", stopErr)
+			}
+			if rmErr := s.Container.Remove(ctx, app.ContainerID, app.Slug); rmErr != nil {
+				slog.Warn("failed to remove container during delete", "id", id, "error", rmErr)
+			}
 		}
-		if rmErr := s.Container.Remove(ctx, app.ContainerID, app.Slug); rmErr != nil {
-			slog.Warn("failed to remove container during delete", "id", id, "error", rmErr)
-		}
-	}
-
-	if app.ImageTag != "" {
-		if imgErr := s.Container.RemoveImage(ctx, app.ImageTag); imgErr != nil {
-			slog.Warn("failed to remove image during delete", "id", id, "error", imgErr)
+		if app.ImageTag != "" {
+			if imgErr := s.Container.RemoveImage(ctx, app.ImageTag); imgErr != nil {
+				slog.Warn("failed to remove image during delete", "id", id, "error", imgErr)
+			}
 		}
 	}
 
