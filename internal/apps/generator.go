@@ -95,7 +95,18 @@ func (g *AppGenerator) GenerateApp(ctx context.Context, req GenerateRequest, emi
 	emit(SSEEvent{Event: "step", Data: StepData{Step: 1, Name: "intent", Status: "done", Result: intent}})
 
 	// ── Step 2: Code Generation ────────────────────────────────────────
-	emit(SSEEvent{Event: "step", Data: StepData{Step: 2, Name: "codegen", Status: "running"}})
+	codegenMode := g.CodeGen.Mode()
+	codegenInfo := map[string]any{"mode": codegenMode}
+	if codegenMode == "smart" {
+		score := ai.ScoreComplexity(intent)
+		if score > 5 {
+			codegenInfo["selected"] = "cloud"
+		} else {
+			codegenInfo["selected"] = "local"
+		}
+		codegenInfo["complexity_score"] = score
+	}
+	emit(SSEEvent{Event: "step", Data: StepData{Step: 2, Name: "codegen", Status: "running", Result: codegenInfo}})
 
 	code, err := g.CodeGen.Generate(ctx, intent)
 	if err != nil {
@@ -201,6 +212,142 @@ func (g *AppGenerator) GenerateApp(ctx context.Context, req GenerateRequest, emi
 	emit(SSEEvent{Event: "complete", Data: result})
 	slog.Info("app generation complete", "app_id", appID, "url", appURL)
 	return result, nil
+}
+
+// RegenerateApp modifies an existing app: load source → codegen modify → review → build → deploy.
+// Reuses the app's existing port and slug. Emits SSE events via the emit callback.
+func (g *AppGenerator) RegenerateApp(ctx context.Context, app *App, modifyPrompt string, emit func(SSEEvent)) (*GenerateResult, error) {
+	slog.Info("starting app regeneration", "app_id", app.ID, "slug", app.Slug, "prompt", modifyPrompt)
+
+	// ── Step 1: Load existing source ──────────────────────────────────
+	emit(SSEEvent{Event: "step", Data: StepData{Step: 1, Name: "load", Status: "running"}})
+
+	var existingCode ai.GeneratedCode
+	if err := json.Unmarshal([]byte(app.SourceCode), &existingCode.Files); err != nil {
+		// Try parsing as full GeneratedCode structure
+		if err2 := json.Unmarshal([]byte(app.SourceCode), &existingCode); err2 != nil {
+			emitError(emit, fmt.Sprintf("failed to parse existing source code: %v", err))
+			return nil, fmt.Errorf("generator: %w", err)
+		}
+	}
+	if existingCode.Dockerfile == "" {
+		existingCode.Dockerfile = "FROM python:3.12-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\nCOPY . .\nEXPOSE 5000\nCMD [\"python\", \"app.py\"]\n"
+	}
+
+	slog.Info("source loaded", "app_id", app.ID, "file_count", len(existingCode.Files))
+	emit(SSEEvent{Event: "step", Data: StepData{Step: 1, Name: "load", Status: "done", Result: map[string]int{"file_count": len(existingCode.Files)}}})
+
+	// ── Step 2: Code Modification ─────────────────────────────────────
+	emit(SSEEvent{Event: "step", Data: StepData{Step: 2, Name: "codegen", Status: "running"}})
+
+	code, err := g.CodeGen.Modify(ctx, &existingCode, modifyPrompt)
+	if err != nil {
+		emitError(emit, fmt.Sprintf("code modification failed: %v", err))
+		return nil, fmt.Errorf("generator: %w", err)
+	}
+
+	slog.Info("code modified", "app_id", app.ID, "file_count", len(code.Files))
+	emit(SSEEvent{Event: "step", Data: StepData{Step: 2, Name: "codegen", Status: "done", Result: map[string]int{"file_count": len(code.Files)}}})
+
+	// ── Step 3: Code Review (non-blocking) ────────────────────────────
+	emit(SSEEvent{Event: "step", Data: StepData{Step: 3, Name: "review", Status: "running"}})
+
+	review, reviewErr := g.Reviewer.Review(ctx, code)
+	if reviewErr != nil {
+		slog.Warn("code review failed, continuing", "app_id", app.ID, "error", reviewErr)
+		emit(SSEEvent{Event: "step", Data: StepData{Step: 3, Name: "review", Status: "warning", Result: map[string]string{"reason": reviewErr.Error()}}})
+	} else if !review.Passed {
+		slog.Warn("code review did not pass, continuing", "app_id", app.ID, "score", review.Score)
+		emit(SSEEvent{Event: "step", Data: StepData{Step: 3, Name: "review", Status: "warning", Result: review}})
+	} else {
+		slog.Info("code review passed", "app_id", app.ID, "score", review.Score)
+		emit(SSEEvent{Event: "step", Data: StepData{Step: 3, Name: "review", Status: "done", Result: review}})
+	}
+
+	// ── Step 4: Docker Image Build (new version) ──────────────────────
+	if g.Builder == nil || g.Container == nil {
+		emitError(emit, "docker not available, cannot rebuild app")
+		return nil, fmt.Errorf("generator: docker not available")
+	}
+
+	emit(SSEEvent{Event: "step", Data: StepData{Step: 4, Name: "build", Status: "running"}})
+
+	// Use v2, v3, etc. based on timestamp to avoid tag conflicts
+	newTag := fmt.Sprintf("bitengine-app-%s:v%d", app.Slug, time.Now().Unix())
+	imageTag, err := g.Builder.BuildWithTag(ctx, newTag, code)
+	if err != nil {
+		emitError(emit, fmt.Sprintf("image build failed: %v", err))
+		return nil, fmt.Errorf("generator: %w", err)
+	}
+
+	slog.Info("image rebuilt", "app_id", app.ID, "image_tag", imageTag)
+	emit(SSEEvent{Event: "step", Data: StepData{Step: 4, Name: "build", Status: "done", Result: map[string]string{"image_tag": imageTag}}})
+
+	// ── Step 5: Replace Container ─────────────────────────────────────
+	emit(SSEEvent{Event: "step", Data: StepData{Step: 5, Name: "deploy", Status: "running"}})
+
+	// Stop and remove old container (keep network)
+	if app.ContainerID != "" {
+		if err := g.Container.RemoveContainer(ctx, app.ContainerID); err != nil {
+			slog.Warn("failed to remove old container", "app_id", app.ID, "error", err)
+		}
+	}
+
+	// Create new container on the same port
+	containerInfo, err := g.Container.Create(ctx, app.Slug, imageTag, app.Port)
+	if err != nil {
+		emitError(emit, fmt.Sprintf("container create failed: %v", err))
+		return nil, fmt.Errorf("generator: %w", err)
+	}
+
+	if err := g.Container.Start(ctx, containerInfo.ID); err != nil {
+		emitError(emit, fmt.Sprintf("container start failed: %v", err))
+		return nil, fmt.Errorf("generator: %w", err)
+	}
+
+	slog.Info("container replaced", "app_id", app.ID, "container_id", containerInfo.ID[:12])
+	emit(SSEEvent{Event: "step", Data: StepData{Step: 5, Name: "deploy", Status: "done", Result: map[string]string{"container_id": containerInfo.ID}}})
+
+	// ── Update database ───────────────────────────────────────────────
+	sourceJSON, err := json.Marshal(code.Files)
+	if err != nil {
+		slog.Warn("failed to marshal source code", "app_id", app.ID, "error", err)
+		sourceJSON = []byte("{}")
+	}
+
+	if err := g.updateApp(ctx, app.ID, containerInfo.ID, imageTag, string(sourceJSON)); err != nil {
+		slog.Error("failed to update app record", "app_id", app.ID, "error", err)
+	}
+
+	// Clean up old image
+	if app.ImageTag != "" && app.ImageTag != imageTag {
+		if err := g.Container.RemoveImage(ctx, app.ImageTag); err != nil {
+			slog.Warn("failed to remove old image", "app_id", app.ID, "error", err)
+		}
+	}
+
+	// ── Complete ──────────────────────────────────────────────────────
+	appURL := fmt.Sprintf("http://%s", app.Domain)
+	result := &GenerateResult{
+		AppID:  app.ID,
+		Slug:   app.Slug,
+		Domain: app.Domain,
+		URL:    appURL,
+	}
+
+	emit(SSEEvent{Event: "complete", Data: result})
+	slog.Info("app regeneration complete", "app_id", app.ID, "url", appURL)
+	return result, nil
+}
+
+// updateApp updates app record after regeneration.
+func (g *AppGenerator) updateApp(ctx context.Context, id, containerID, imageTag, sourceCode string) error {
+	const query = `UPDATE runtime.apps SET container_id=$1, image_tag=$2, source_code=$3, status='running', updated_at=$4 WHERE id=$5`
+	_, err := g.DB.ExecContext(ctx, query, containerID, imageTag, sourceCode, time.Now(), id)
+	if err != nil {
+		return fmt.Errorf("generator: update app: %w", err)
+	}
+	return nil
 }
 
 // allocatePort queries the database for the next available port, starting from 10001.

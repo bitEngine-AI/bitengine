@@ -59,6 +59,33 @@ func (b *ImageBuilder) Build(ctx context.Context, slug string, code *ai.Generate
 	return tag, nil
 }
 
+// BuildWithTag creates a Docker image with a specific tag (e.g. "bitengine-app-todo:v2").
+func (b *ImageBuilder) BuildWithTag(ctx context.Context, tag string, code *ai.GeneratedCode) (string, error) {
+	slog.Info("building image", "tag", tag, "file_count", len(code.Files))
+
+	tarBuf, err := buildTarball(code)
+	if err != nil {
+		return "", fmt.Errorf("builder: %w", err)
+	}
+
+	resp, err := b.cli.ImageBuild(ctx, tarBuf, types.ImageBuildOptions{
+		Tags:       []string{tag},
+		Dockerfile: "Dockerfile",
+		Remove:     true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("builder: image build: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if err := readBuildOutput(resp.Body); err != nil {
+		return "", fmt.Errorf("builder: %w", err)
+	}
+
+	slog.Info("image built", "tag", tag)
+	return tag, nil
+}
+
 // buildTarball creates an in-memory tar archive from GeneratedCode.
 func buildTarball(code *ai.GeneratedCode) (*bytes.Buffer, error) {
 	buf := new(bytes.Buffer)

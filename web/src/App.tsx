@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from './stores/authStore'
 import { setupAPI } from './api/client'
@@ -65,6 +65,7 @@ export default function App() {
   }, [])
 
   return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-950" />}>
     <BrowserRouter>
       <LanguageSwitcher />
       <Routes>
@@ -80,5 +81,6 @@ export default function App() {
         <Route path="*" element={<RootRedirect setupDone={setupDone} />} />
       </Routes>
     </BrowserRouter>
+    </Suspense>
   )
 }

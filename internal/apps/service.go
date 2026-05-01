@@ -44,12 +44,25 @@ func (s *AppService) List(ctx context.Context) ([]App, error) {
 	if err := s.DB.SelectContext(ctx, &apps, `SELECT * FROM runtime.apps ORDER BY created_at DESC`); err != nil {
 		return nil, fmt.Errorf("apps: %w", err)
 	}
+	for i := range apps {
+		s.syncAppStatus(ctx, &apps[i])
+	}
 	slog.Info("apps listed", "count", len(apps))
 	return apps, nil
 }
 
 // Get returns a single app by ID.
 func (s *AppService) Get(ctx context.Context, id string) (*App, error) {
+	var app App
+	if err := s.DB.GetContext(ctx, &app, `SELECT * FROM runtime.apps WHERE id=$1`, id); err != nil {
+		return nil, fmt.Errorf("apps: %w", err)
+	}
+	s.syncAppStatus(ctx, &app)
+	return &app, nil
+}
+
+// GetWithSource returns a single app by ID including the source_code field.
+func (s *AppService) GetWithSource(ctx context.Context, id string) (*App, error) {
 	var app App
 	if err := s.DB.GetContext(ctx, &app, `SELECT * FROM runtime.apps WHERE id=$1`, id); err != nil {
 		return nil, fmt.Errorf("apps: %w", err)
@@ -135,6 +148,49 @@ func (s *AppService) Stop(ctx context.Context, id string) error {
 
 	slog.Info("app stopped", "id", id, "slug", app.Slug)
 	return nil
+}
+
+// syncAppStatus checks real Docker container status and updates the DB if different.
+func (s *AppService) syncAppStatus(ctx context.Context, app *App) {
+	if s.Container == nil || app.ContainerID == "" || app.Status == "creating" {
+		return
+	}
+	info, err := s.Container.Status(ctx, app.ContainerID)
+	if err != nil {
+		if app.Status != "error" {
+			s.DB.ExecContext(ctx, `UPDATE runtime.apps SET status='error', updated_at=NOW() WHERE id=$1`, app.ID)
+			app.Status = "error"
+			slog.Info("app container missing, marked error", "id", app.ID, "slug", app.Slug)
+		}
+		return
+	}
+	var realStatus string
+	if info.Running {
+		realStatus = "running"
+	} else {
+		realStatus = "stopped"
+	}
+	if realStatus != app.Status {
+		slog.Info("app status synced", "id", app.ID, "slug", app.Slug, "db", app.Status, "real", realStatus)
+		s.DB.ExecContext(ctx, `UPDATE runtime.apps SET status=$1, updated_at=NOW() WHERE id=$2`, realStatus, app.ID)
+		app.Status = realStatus
+	}
+}
+
+// SyncStatuses checks real Docker container status for all apps and updates the DB.
+func (s *AppService) SyncStatuses(ctx context.Context) {
+	if s.Container == nil {
+		return
+	}
+	apps := make([]App, 0)
+	if err := s.DB.SelectContext(ctx, &apps, `SELECT id, slug, status, container_id FROM runtime.apps`); err != nil {
+		slog.Warn("failed to list apps for status sync", "error", err)
+		return
+	}
+	for i := range apps {
+		s.syncAppStatus(ctx, &apps[i])
+	}
+	slog.Info("app statuses synced", "count", len(apps))
 }
 
 // Logs returns the container log stream for the given app.

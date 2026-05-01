@@ -22,13 +22,15 @@ export default function Setup({ onSetupComplete }: SetupProps) {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/desktop', { replace: true })
-      return
-    }
     setupAPI
       .status()
-      .then((s) => setPhase(s.completed ? 'login' : 'create'))
+      .then((s) => {
+        if (s.completed && isAuthenticated) {
+          navigate('/desktop', { replace: true })
+        } else {
+          setPhase(s.completed ? 'login' : 'create')
+        }
+      })
       .catch(() => setPhase('create'))
   }, [isAuthenticated, navigate])
 

@@ -21,7 +21,7 @@ func NewOllamaClient(baseURL string) *OllamaClient {
 	return &OllamaClient{
 		BaseURL: baseURL,
 		HTTPClient: &http.Client{
-			Timeout: 10 * time.Minute,
+			Timeout: 30 * time.Minute,
 		},
 	}
 }

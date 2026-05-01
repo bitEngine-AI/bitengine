@@ -116,6 +116,17 @@ func (m *ContainerManager) Remove(ctx context.Context, containerID, slug string)
 	return nil
 }
 
+// RemoveContainer stops and removes a container without removing the network.
+// Used during app regeneration where the network and port are reused.
+func (m *ContainerManager) RemoveContainer(ctx context.Context, containerID string) error {
+	timeout := 10
+	_ = m.cli.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout})
+	if err := m.cli.ContainerRemove(ctx, containerID, container.RemoveOptions{Force: true}); err != nil {
+		return fmt.Errorf("runtime: container remove: %w", err)
+	}
+	return nil
+}
+
 // Logs returns the container logs as a reader.
 func (m *ContainerManager) Logs(ctx context.Context, containerID string, tail string) (io.ReadCloser, error) {
 	if tail == "" {

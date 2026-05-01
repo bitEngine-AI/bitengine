@@ -57,6 +57,7 @@ func NewRouter(db *sqlx.DB, rdb *redis.Client, jwtSecret string, ollama *ai.Olla
 			r.Get("/apps", appsH.List)
 			r.Get("/apps/{id}", appsH.Get)
 			r.Delete("/apps/{id}", appsH.Delete)
+			r.Post("/apps/{id}/regenerate", appsH.Regenerate)
 			r.Post("/apps/{id}/start", appsH.Start)
 			r.Post("/apps/{id}/stop", appsH.Stop)
 			r.Get("/apps/{id}/logs", appsH.Logs)

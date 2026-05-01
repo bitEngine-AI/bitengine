@@ -27,20 +27,26 @@
   },
   "ai": {
     "title": "新建应用",
+    "modifyTitle": "修改应用",
     "success": "应用创建成功",
+    "modifySuccess": "应用修改成功",
     "continueCreate": "继续创建",
     "hint": "描述你想要的应用，AI 将自动生成并部署。",
+    "modifyHint": "描述你想要修改的内容。",
     "placeholder": "描述你想要的应用...",
+    "modifyPlaceholder": "描述你想要修改的内容...",
     "errorGenerate": "生成失败",
     "errorConnect": "连接失败"
   },
   "app": {
     "stop": "停止",
     "start": "启动",
-    "visit": "访问"
+    "visit": "访问",
+    "modify": "修改"
   },
   "progress": {
     "steps": {
+      "load": "加载源码",
       "intent": "意图理解",
       "codegen": "代码生成",
       "review": "代码审查",

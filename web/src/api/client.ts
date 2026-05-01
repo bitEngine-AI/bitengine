@@ -119,6 +119,83 @@ export function createAppSSE(
   return controller
 }
 
+// SSE helper for app regeneration (modify existing app)
+export function regenerateAppSSE(
+  appId: string,
+  prompt: string,
+  onEvent: (event: string, data: any) => void,
+  onError: (err: Error) => void,
+): AbortController {
+  const controller = new AbortController()
+
+  async function doFetch() {
+    const token = getToken()
+    const resp = await fetch(`${BASE}/apps/${appId}/regenerate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ prompt }),
+      signal: controller.signal,
+    })
+
+    if (resp.status === 401) {
+      const refreshed = await tryRefreshToken()
+      if (refreshed) {
+        const newToken = getToken()
+        const retryResp = await fetch(`${BASE}/apps/${appId}/regenerate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(newToken ? { Authorization: `Bearer ${newToken}` } : {}),
+          },
+          body: JSON.stringify({ prompt }),
+          signal: controller.signal,
+        })
+        if (!retryResp.ok) throw new Error(`HTTP ${retryResp.status}`)
+        return retryResp
+      }
+      throw new Error('HTTP 401')
+    }
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    return resp
+  }
+
+  doFetch()
+    .then(async (resp) => {
+      const reader = resp.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        let currentEvent = 'message'
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim()
+          } else if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              onEvent(currentEvent, data)
+            } catch { /* ignore parse errors */ }
+          }
+        }
+      }
+    })
+    .catch((err) => {
+      if (err.name !== 'AbortError') onError(err)
+    })
+
+  return controller
+}
+
 // Auth
 export const authAPI = {
   login: (username: string, password: string) =>

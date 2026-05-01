@@ -27,20 +27,26 @@
   },
   "ai": {
     "title": "New App",
+    "modifyTitle": "Modify App",
     "success": "App created successfully",
+    "modifySuccess": "App modified successfully",
     "continueCreate": "Create Another",
     "hint": "Describe the app you want, and AI will generate and deploy it automatically.",
+    "modifyHint": "Describe what you want to change in this app.",
     "placeholder": "Describe the app you want...",
+    "modifyPlaceholder": "Describe the changes you want...",
     "errorGenerate": "Generation failed",
     "errorConnect": "Connection failed"
   },
   "app": {
     "stop": "Stop",
     "start": "Start",
-    "visit": "Visit"
+    "visit": "Visit",
+    "modify": "Modify"
   },
   "progress": {
     "steps": {
+      "load": "Load Source",
       "intent": "Intent Analysis",
       "codegen": "Code Generation",
       "review": "Code Review",

@@ -70,6 +70,65 @@ func (h *AppsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type regenerateRequest struct {
+	Prompt string `json:"prompt"`
+}
+
+// Regenerate handles POST /api/v1/apps/{id}/regenerate — modify and redeploy app (SSE stream).
+func (h *AppsHandler) Regenerate(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	var req regenerateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, "BAD_REQUEST", "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if req.Prompt == "" {
+		writeError(w, "VALIDATION", "prompt is required", http.StatusBadRequest)
+		return
+	}
+
+	app, err := h.Service.GetWithSource(r.Context(), id)
+	if err != nil {
+		writeError(w, "NOT_FOUND", "app not found", http.StatusNotFound)
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		writeError(w, "INTERNAL", "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.WriteHeader(http.StatusOK)
+	flusher.Flush()
+
+	emit := func(ev apps.SSEEvent) {
+		data, _ := json.Marshal(ev.Data)
+		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.Event, string(data))
+		flusher.Flush()
+	}
+
+	defer func() {
+		if rec := recover(); rec != nil {
+			slog.Error("panic in app regeneration", "recover", rec)
+			data, _ := json.Marshal(map[string]string{"message": fmt.Sprintf("internal error: %v", rec)})
+			fmt.Fprintf(w, "event: error\ndata: %s\n\n", string(data))
+			flusher.Flush()
+		}
+	}()
+
+	_, err = h.Generator.RegenerateApp(r.Context(), app, req.Prompt, emit)
+	if err != nil {
+		data, _ := json.Marshal(map[string]string{"message": err.Error()})
+		fmt.Fprintf(w, "event: error\ndata: %s\n\n", string(data))
+		flusher.Flush()
+	}
+}
+
 // List handles GET /api/v1/apps — list all apps.
 func (h *AppsHandler) List(w http.ResponseWriter, r *http.Request) {
 	list, err := h.Service.List(r.Context())

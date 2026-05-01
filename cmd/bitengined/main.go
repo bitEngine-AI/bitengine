@@ -111,6 +111,7 @@ func main() {
 		db,
 	)
 	svc := apps.NewAppService(db, containerMgr)
+	svc.SyncStatuses(ctx)
 	tplSvc := apps.NewTemplateService("templates", builder, containerMgr, caddyMgr, db)
 
 	router := api.NewRouter(db, rdb, cfg.JWTSecret, ollama, codegen, gen, svc, tplSvc, hwInfo, models)

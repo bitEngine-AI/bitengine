@@ -11,6 +11,7 @@ export default function Desktop() {
   const { apps, loading, fetchApps } = useAppStore()
   const { logout } = useAuthStore()
   const [showAI, setShowAI] = useState(false)
+  const [modifyApp, setModifyApp] = useState<{ id: string; name: string } | null>(null)
 
   useEffect(() => {
     fetchApps()
@@ -46,7 +47,10 @@ export default function Desktop() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {apps.map((app) => (
-              <AppCard key={app.id} app={app} />
+              <AppCard key={app.id} app={app} onModify={(id, name) => {
+                setModifyApp({ id, name })
+                setShowAI(true)
+              }} />
             ))}
           </div>
         )}
@@ -55,13 +59,17 @@ export default function Desktop() {
       {/* FAB + AI Panel */}
       {!showAI && (
         <button
-          onClick={() => setShowAI(true)}
+          onClick={() => { setModifyApp(null); setShowAI(true) }}
           className="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition"
         >
           <Plus className="w-6 h-6" />
         </button>
       )}
-      {showAI && <AIPanel onClose={() => setShowAI(false)} />}
+      {showAI && <AIPanel
+        onClose={() => { setShowAI(false); setModifyApp(null) }}
+        modifyAppId={modifyApp?.id}
+        modifyAppName={modifyApp?.name}
+      />}
     </div>
   )
 }

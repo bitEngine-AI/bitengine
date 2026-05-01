@@ -1,10 +1,11 @@
-import { Play, Square, Trash2, ExternalLink } from 'lucide-react'
+import { Play, Square, Trash2, ExternalLink, Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { appsAPI, type AppInfo } from '../api/client'
 import { useAppStore } from '../stores/appStore'
 
 interface AppCardProps {
   app: AppInfo
+  onModify?: (appId: string, appName: string) => void
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -14,7 +15,7 @@ const STATUS_DOT: Record<string, string> = {
   error: 'bg-red-500',
 }
 
-export default function AppCard({ app }: AppCardProps) {
+export default function AppCard({ app, onModify }: AppCardProps) {
   const { t } = useTranslation()
   const dotClass = STATUS_DOT[app.status] || 'bg-gray-500'
 
@@ -85,6 +86,14 @@ export default function AppCard({ app }: AppCardProps) {
           <ExternalLink className="w-4 h-4" />
           {t('app.visit')}
         </a>
+
+        <button
+          onClick={() => onModify?.(app.id, app.name)}
+          className="inline-flex items-center gap-1 text-sm text-gray-300 hover:text-gray-100 transition-colors"
+        >
+          <Pencil className="w-4 h-4" />
+          {t('app.modify')}
+        </button>
 
         <button
           onClick={handleDelete}

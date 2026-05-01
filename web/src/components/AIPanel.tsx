@@ -1,15 +1,17 @@
 import { useState, useRef } from 'react'
 import { X, Send, ExternalLink } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { createAppSSE } from '../api/client'
+import { createAppSSE, regenerateAppSSE } from '../api/client'
 import { useAppStore } from '../stores/appStore'
 import Progress, { type Step } from './Progress'
 
 interface AIPanelProps {
   onClose: () => void
+  modifyAppId?: string
+  modifyAppName?: string
 }
 
-const INITIAL_STEPS: Step[] = [
+const CREATE_STEPS: Step[] = [
   { step: 1, name: 'intent', status: 'pending' },
   { step: 2, name: 'codegen', status: 'pending' },
   { step: 3, name: 'review', status: 'pending' },
@@ -18,11 +20,21 @@ const INITIAL_STEPS: Step[] = [
   { step: 6, name: 'route', status: 'pending' },
 ]
 
-export default function AIPanel({ onClose }: AIPanelProps) {
+const MODIFY_STEPS: Step[] = [
+  { step: 1, name: 'load', status: 'pending' },
+  { step: 2, name: 'codegen', status: 'pending' },
+  { step: 3, name: 'review', status: 'pending' },
+  { step: 4, name: 'build', status: 'pending' },
+  { step: 5, name: 'deploy', status: 'pending' },
+]
+
+export default function AIPanel({ onClose, modifyAppId, modifyAppName }: AIPanelProps) {
   const { t } = useTranslation()
+  const isModify = !!modifyAppId
+  const initialSteps = isModify ? MODIFY_STEPS : CREATE_STEPS
   const [prompt, setPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
-  const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS)
+  const [steps, setSteps] = useState<Step[]>(initialSteps)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<{
     app_id: string
@@ -40,36 +52,40 @@ export default function AIPanel({ onClose }: AIPanelProps) {
     setGenerating(true)
     setError(null)
     setResult(null)
-    setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'pending' })))
+    setSteps(initialSteps.map((s) => ({ ...s, status: 'pending' })))
 
-    abortRef.current = createAppSSE(
-      trimmed,
-      (event, data) => {
-        if (event === 'step') {
-          setSteps((prev) =>
-            prev.map((s) =>
-              s.step === data.step ? { ...s, status: data.status } : s,
-            ),
-          )
-        } else if (event === 'complete') {
-          setResult({
-            app_id: data.app_id,
-            slug: data.slug,
-            domain: data.domain,
-            url: data.url,
-          })
-          setGenerating(false)
-          useAppStore.getState().fetchApps()
-        } else if (event === 'error') {
-          setError(data.message || t('ai.errorGenerate'))
-          setGenerating(false)
-        }
-      },
-      (err) => {
-        setError(err.message || t('ai.errorConnect'))
+    const onEvent = (event: string, data: any) => {
+      if (event === 'step') {
+        setSteps((prev) =>
+          prev.map((s) =>
+            s.step === data.step ? { ...s, status: data.status, name: data.name } : s,
+          ),
+        )
+      } else if (event === 'complete') {
+        setResult({
+          app_id: data.app_id,
+          slug: data.slug,
+          domain: data.domain,
+          url: data.url,
+        })
         setGenerating(false)
-      },
-    )
+        useAppStore.getState().fetchApps()
+      } else if (event === 'error') {
+        setError(data.message || t('ai.errorGenerate'))
+        setGenerating(false)
+      }
+    }
+
+    const onErr = (err: Error) => {
+      setError(err.message || t('ai.errorConnect'))
+      setGenerating(false)
+    }
+
+    if (isModify) {
+      abortRef.current = regenerateAppSSE(modifyAppId!, trimmed, onEvent, onErr)
+    } else {
+      abortRef.current = createAppSSE(trimmed, onEvent, onErr)
+    }
   }
 
   function handleClose() {
@@ -83,7 +99,7 @@ export default function AIPanel({ onClose }: AIPanelProps) {
   function handleReset() {
     setPrompt('')
     setGenerating(false)
-    setSteps(INITIAL_STEPS.map((s) => ({ ...s, status: 'pending' })))
+    setSteps(initialSteps.map((s: Step) => ({ ...s, status: 'pending' })))
     setError(null)
     setResult(null)
   }
@@ -92,7 +108,9 @@ export default function AIPanel({ onClose }: AIPanelProps) {
     <div className="fixed bottom-6 right-6 w-96 bg-gray-900 rounded-2xl shadow-2xl border border-gray-800 flex flex-col max-h-[80vh] z-50">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-        <h2 className="text-sm font-semibold text-gray-100">{t('ai.title')}</h2>
+        <h2 className="text-sm font-semibold text-gray-100">
+          {isModify ? `${t('ai.modifyTitle')}: ${modifyAppName}` : t('ai.title')}
+        </h2>
         <button
           onClick={handleClose}
           className="text-gray-400 hover:text-gray-200 transition-colors"
@@ -136,7 +154,7 @@ export default function AIPanel({ onClose }: AIPanelProps) {
 
         {!generating && !result && !error && (
           <p className="text-sm text-gray-500">
-            {t('ai.hint')}
+            {isModify ? t('ai.modifyHint') : t('ai.hint')}
           </p>
         )}
       </div>
@@ -150,7 +168,7 @@ export default function AIPanel({ onClose }: AIPanelProps) {
           <input
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder={t('ai.placeholder')}
+            placeholder={isModify ? t('ai.modifyPlaceholder') : t('ai.placeholder')}
             className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
